@@ -1,3 +1,2 @@
 vmas
 torch
-matplotlib
