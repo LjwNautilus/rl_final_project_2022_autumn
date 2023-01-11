@@ -9,7 +9,7 @@ This repository is the codebase of *Reinforcement Learning and Game Theory*  cou
   - `network.py` defines network architectures.
   - `replay_memory.py` implements experience replay.
   - `run_env.py` defines a function `run_env` to test policies.
-- Directory `./algorithms` stores code of PPO-bases algorithms. `cppo.py`, `ippo.py` and `mappo.py` are in the directory.
+- Directory `./algorithms/` stores code of PPO-bases algorithms. `cppo.py`, `ippo.py` and `mappo.py` are in the directory.
 - The main function lies in `main.py`.
 
 ## Usage
