@@ -77,7 +77,7 @@ def parse_args():
         '-r', '--render',
         dest='render', action='store_true',
         help=f'whether render gif, GL is needed. default is Fasle',
-        default=False, type=bool
+        default=False
     )
     parser.add_argument(
         '-e', '--epoch',
