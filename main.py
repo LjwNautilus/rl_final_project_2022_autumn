@@ -155,9 +155,9 @@ if __name__ == '__main__':
     )
 
     if ALGORITHM == 'cppo':
-        reward = run_env(
-            env, agent, n_steps=1000, render=RENDER, centralised=True
-        )
+        reward = run_env(env, agent, n_steps=1000, render=RENDER, alg='cppo')
+    elif ALGORITHM == 'mappo':
+        reward = run_env(env, agent, n_steps=1000, render=RENDER, alg='mappo')
     else:
         reward = run_env(env, agent, n_steps=1000, render=RENDER)
     print(f'Final {ALGORITHM} reward: ', reward)
