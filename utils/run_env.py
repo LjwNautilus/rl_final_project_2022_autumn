@@ -9,7 +9,7 @@ def run_env(
     render=True,
     save_render=False,
     save_name='video',
-    centralised=False,
+    alg=None,
 ):
     assert not (save_render and not render), \
         "To save the video you have to render it"
@@ -20,19 +20,23 @@ def run_env(
     total_reward = 0
     for _ in range(n_steps):
         step += 1
-        if centralised:
+        if alg == 'cppo':
             if isinstance(obs, list):
                 obs = torch.concat(obs, dim=1)
+            action_tensor = \
+                policy.compute_action(obs, u_range=env.agents[0].u_range)
+            actions = action_tensor.split(
+                action_tensor.shape[1] // env.n_agents, dim=1
+            )
+        elif alg == 'mappo':
             actions = \
                 policy.compute_action(obs, u_range=env.agents[0].u_range)
-            action_list = actions.split(actions.shape[1] // env.n_agents, dim=1)
-            obs, rews, dones, _ = env.step(action_list)
         else:
             actions = [None] * len(obs)
             for i in range(len(obs)):
                 actions[i] = \
                     policy.compute_action(obs[i], u_range=env.agents[i].u_range)
-            obs, rews, dones, _ = env.step(actions)
+        obs, rews, dones, _ = env.step(actions)
         rewards = torch.stack(rews, dim=1)
         global_reward = rewards.mean(dim=1)
         mean_global_reward = global_reward.mean(dim=0)

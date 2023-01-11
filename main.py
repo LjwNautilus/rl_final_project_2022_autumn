@@ -1,12 +1,14 @@
-import sys
+import argparse
+
 import torch
 import vmas
 from vmas.scenarios.balance import HeuristicPolicy as BalanceHeuristic
 from vmas.scenarios.transport import HeuristicPolicy as TransportHeuristic
 from vmas.scenarios.wheel import HeuristicPolicy as WheelHeuristic
 
-from ippo import IPPO
-from cppo import CPPO
+from algorithms.cppo import CPPO
+from algorithms.ippo import IPPO
+from algorithms.mappo import MAPPO
 from utils.run_env import run_env
 
 DEVICE = 'cuda' if torch.cuda.is_available() else 'cpu'
@@ -28,23 +30,79 @@ POLICY_UPDATE = 64
 UPDATE_BATCH = 32
 EVALUATE_FREQUENCY = 10
 SAVE_FREQUENCY = -1
-WRITE_FILE = True
+WRITE_FILE = False
 
-ALGORITHM = 'ippo'
+ALGORITHM = 'cppo'
 
 # Fixs random seed.
 torch.manual_seed(0)
 
+def parse_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-s', '--scenario',
+        dest='scenario',
+        help=f'''name of the scenario, default value is \'{SCENARIO}\'.
+        valid inputs: [balance | wheel | transport]''',
+        default=SCENARIO
+    )
+    parser.add_argument(
+        '-a', '--alg', 
+        dest='alg',
+        help=f'''name of the algorithm, default value is \'{ALGORITHM}\'.
+        valid inputs: [cppo | ippo | mappo]''',
+        default=ALGORITHM
+    )
+    parser.add_argument(
+        '-d', '--device',
+        dest='device',
+        help='the device to be run, valid inputs: [cuda | cuda:$ID | cpu]',
+        default=DEVICE
+    )
+    parser.add_argument(
+        '-w', '--write-file',
+        dest='write',
+        help=f'whether writes rewards to files, default value is {WRITE_FILE}',
+        default=WRITE_FILE, type=bool
+    )
+    parser.add_argument(
+        '--save',
+        dest='save',
+        help=f'''the frequency of saving weights, 
+        default value is {SAVE_FREQUENCY}.
+        negative number indicates not to save weights.''',
+        default=SAVE_FREQUENCY, type=int
+    )
+    parser.add_argument(
+        '-r', '--render',
+        dest='render',
+        help=f'whether render gif, GL is needed. default is {RENDER}',
+        default=RENDER, type=bool
+    )
+    parser.add_argument(
+        '-e', '--epoch',
+        dest='epoch',
+        help=f'number of epoches to be run, default is {EPOCH}',
+        default=EPOCH, type=int
+    )
+    return parser
+
 if __name__ == '__main__':
-    if len(sys.argv) > 1:
-        SCENARIO = sys.argv[1]
-    if len(sys.argv) > 2:
-        temp = sys.argv[2].lower()
-        if temp == 'cppo':
-            ALGORITHM = 'cppo'
-    if len(sys.argv) > 3:
-        DEVICE = sys.argv[3]
-    
+    parser = parse_args()
+    args = parser.parse_args()
+    ALGORITHM = args.alg
+    if args.epoch > 0:
+        EPOCH = args.epoch
+    DEVICE = args.device
+    RENDER = args.render
+    SCENARIO = args.scenario
+    if args.save != 0:
+        SAVE_FREQUENCY = args.save
+    WRITE_FILE = args.write
+
+    print(f'Algorithm: {ALGORITHM}')
+    print(f'Scenario: {SCENARIO}')
+
     env = vmas.make_env(
         scenario_name=SCENARIO,
         num_envs=NUM_ENVS,
@@ -67,7 +125,7 @@ if __name__ == '__main__':
             critic_lr=CRITIC_LR,
             device=DEVICE
         )
-    else:
+    elif ALGORITHM == 'cppo':
         agent = CPPO(
             num_agents, 
             state_dim, HIDDEN_DIM, action_dim,
@@ -75,7 +133,15 @@ if __name__ == '__main__':
             critic_lr=CRITIC_LR,
             device=DEVICE
         )
-
+    else:
+        agent = MAPPO(
+            num_agents, 
+            state_dim, HIDDEN_DIM, action_dim,
+            actor_lr=ACTOR_LR, 
+            critic_lr=CRITIC_LR,
+            device=DEVICE
+        )
+        
     agent.learn(
         env, 
         epoch=EPOCH, 

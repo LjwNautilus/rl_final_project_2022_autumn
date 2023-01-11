@@ -15,7 +15,7 @@ This repository is the codebase of *Reinforcement Learning and Game Theory*  cou
 ## Usage
 
 ```bash
-# python main.py [balance | transport | wheel] [ippo | cppo] [cpu | cuda:$GPU_ID]
+# python main.py --help
 python main.py
 ```
 

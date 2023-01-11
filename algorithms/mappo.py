@@ -1,15 +1,19 @@
 from copy import deepcopy
 import os
+import sys
 from tqdm import tqdm
 
 import torch
 import torch.nn.functional as F
 
+sys.path.append(os.path.dirname(__file__))
+sys.path.append(os.path.dirname(__file__) + '/..')
+from ppo import PPO
 from utils.network import PolicyNet, ValueNet
 from utils.replay_memory import ReplayMemory
 from utils.run_env import run_env
         
-class IPPO:
+class MAPPO(PPO):
     def __init__(
         self,
         num_agents,
@@ -29,48 +33,38 @@ class IPPO:
         self.eps = eps
         self.device = device
 
-        self.actor = PolicyNet(state_dim, hidden_dim, action_dim).to(device)
-        self.target = PolicyNet(state_dim, hidden_dim, action_dim).to(device)
+        self.actors = tuple(
+            PolicyNet(state_dim, hidden_dim, action_dim).to(device)
+            for _ in range(num_agents)
+        )
+        self.targets = tuple(
+            PolicyNet(state_dim, hidden_dim, action_dim).to(device)
+            for _ in range(num_agents)
+        )
         self.critic = ValueNet(state_dim, hidden_dim).to(device)
-        self.actor_optimizer = torch.optim.AdamW(
-            self.actor.parameters(), lr=actor_lr)
-        self.critic_optimizer = torch.optim.AdamW(
-            self.critic.parameters(), lr=critic_lr)
+        self.actor_optimizers = tuple(
+            torch.optim.AdamW(self.actors[i].parameters(), lr=actor_lr)
+            for i in range(num_agents)
+        )
+        self.critic_optimizer = \
+            torch.optim.AdamW(self.critic.parameters(), lr=critic_lr)
 
     # Loads saved weights of networks.
-    def load(self, actor_weight_path):
-        actor_weight = torch.load(actor_weight_path)
-        self.actor.load_state_dict(actor_weight)
-
-    # Computes the action produced by the given network.
-    # The network could be the actor network or the target network.
-    def network_action(self, network: torch.nn.Module, state, u_range):
-        state = state.to(self.device)
-        mu, sigma = network(state)
-        action_distribution = torch.distributions.Normal(mu, sigma)
-        action = action_distribution.sample()
-        return torch.clamp(action, -u_range, u_range)
-
-    # Calculates log probabilities of actions.
-    def log_probability(self, network: torch.nn.Module, state, action):
-        state = state.to(self.device)
-        mu, sigma = network(state)
-        action_distribution = torch.distributions.Normal(mu, sigma)
-        log_prob = action_distribution.log_prob(action)
-        entropy = action_distribution.entropy()
-        return log_prob, entropy
+    def load(self, actor_weight_paths: list):
+        actor_weights = [
+            torch.load(actor_weight_paths[i])
+            for i in range(len(actor_weight_paths))
+        ]
+        for i in range(len(actor_weights)):
+            self.actors[i].load_state_dict(actor_weights[i])
 
     # The api for function run_env(),
     # computes the action produced by the actor network.
-    def compute_action(self, state: torch.Tensor, u_range: float):
-        return self.network_action(self.actor, state, u_range)
-
-    # Calculates advantages using gae estimation.
-    def gae_advantage(self, td_error: torch.Tensor):
-        gaes = td_error[:]
-        for t in range(len(gaes) - 2, -1, -1):
-            gaes[t] += self.gamma * self.gae_lambda * gaes[t + 1]
-        return gaes
+    def compute_action(self, states: list, u_range: float) -> list:
+        actions = [None] * len(states)
+        for i in range(len(states)):
+            actions[i] = self.network_action(self.actors[i], states[i], u_range)
+        return actions
 
     # Updates networks.
     def update(self, memory: ReplayMemory, batch_size):
@@ -92,10 +86,12 @@ class IPPO:
             td_error = td_target - value_estimate
             advantage = self.gae_advantage(td_error.cpu()).to(self.device)
 
-            old_log_probs, _ = \
-                self.log_probability(self.target, agent_states, agent_actions)
-            log_probs, entropy = \
-                self.log_probability(self.actor, agent_states, agent_actions)
+            old_log_probs, _ = self.log_probability(
+                self.targets[agent_id], agent_states, agent_actions
+            )
+            log_probs, entropy = self.log_probability(
+                self.actors[agent_id], agent_states, agent_actions
+            )
             prob_ratio = torch.exp(log_probs - old_log_probs)
             # Calculates policy surrogate.
             surrogate = prob_ratio * advantage.view(-1, 1)
@@ -107,12 +103,14 @@ class IPPO:
             critic_loss = F.mse_loss(value_estimate, td_target).mean()
             loss = actor_loss + 0.5 * critic_loss + 0.001 * entropy.mean()
             # Updates actor and critic network.
-            self.actor_optimizer.zero_grad()
+            self.actor_optimizers[agent_id].zero_grad()
             self.critic_optimizer.zero_grad()
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.actor.parameters(), 0.5)
+            torch.nn.utils.clip_grad_norm_(
+                self.actors[agent_id].parameters(), 0.5
+            )
             torch.nn.utils.clip_grad_norm_(self.critic.parameters(), 0.5)
-            self.actor_optimizer.step()
+            self.actor_optimizers[agent_id].step()
             self.critic_optimizer.step()
             loss_list.append(loss.item())
             actor_loss_list.append(actor_loss.item())
@@ -148,11 +146,11 @@ class IPPO:
             training = episode > warm_epoch
             for step in range(sample_num):
                 actions = [None] * len(obs)
-                for agent_id in range(len(obs)):
-                    actions[agent_id] = self.network_action(
-                        self.target,
-                        obs[agent_id],
-                        u_range=env.agents[agent_id].u_range
+                for id in range(len(obs)):
+                    actions[id] = self.network_action(
+                        self.targets[id],
+                        obs[id],
+                        u_range=env.agents[id].u_range
                     )
                 next_obs, rews, dones, _ = env.step(actions)
                 actions = torch.stack(actions, dim=1)
@@ -165,7 +163,8 @@ class IPPO:
                     and training):
                     self.update(memory, update_batch)
             # Copies parameters from actor network to target policy network.
-            self.target.load_state_dict(self.actor.state_dict())
+            for i in range(self.num_agents):
+                self.targets[i].load_state_dict(self.actors[i].state_dict())
             # Writes reward values to file or just prints values.
             if write_file:
                 write_str = (f'{update_counter:6d} {episode_reward:.3f}\n')
@@ -175,7 +174,11 @@ class IPPO:
             else:
                 print('\nTrain reward: ', episode_reward)
             if episode % evaluate_frequency == 0:
-                evaluate_reward = run_env(evaluate_env, self, render=False)
+                evaluate_reward = run_env(
+                    evaluate_env, self, 
+                    render=False,
+                    alg='mappo'
+                )
                 if write_file:
                     write_str = (f'{episode // evaluate_frequency:4d}'
                                  + f' {episode:6d}'
@@ -189,7 +192,8 @@ class IPPO:
             # Saves weights of networks.
             if save_weight and \
                ((episode + 1) % save_frequency == 0 or episode == epoch - 1):
-                actor_weight_name = f'{save_prefix}/actor{episode}.pt'
                 critic_weight_name = f'{save_prefix}/critic{episode}.pt'
-                torch.save(self.actor.state_dict(), actor_weight_name)
                 torch.save(self.critic.state_dict(), critic_weight_name)
+                for id in range(self.num_agents):
+                    actor_weight_name = f'{save_prefix}/actor{id}{episode}.pt'
+                    torch.save(self.actors[id].state_dict(), actor_weight_name)
