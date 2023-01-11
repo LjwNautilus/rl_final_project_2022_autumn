@@ -37,12 +37,12 @@ Training results of IPPO, CPPO and MAPPO are shown below. It is obvious that rew
 
 ### balance
 
-![lZwTo.png](https://i.328888.xyz/2023/01/11/lZwTo.png)
+![balance.png](./utils/pics/balance.png)
 
 ### transport
 
-![lZT1A.png](https://i.328888.xyz/2023/01/11/lZT1A.png)
+![transport.png](./utils/pics/transport.png)
 
 ### wheel
 
-![li8gH.png](https://i.328888.xyz/2023/01/11/li8gH.png)
+![wheel.png](./utils/pics/wheel.png)
