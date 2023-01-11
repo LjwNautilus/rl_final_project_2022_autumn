@@ -12,6 +12,17 @@ This repository is the codebase of *Reinforcement Learning and Game Theory*  cou
 - `cppo.py`, `ippo.py` defines PPO-based algorithms.
 - The main function lies in `main.py`.
 
+## Usage
+
+```bash
+# python main.py [balance | transport | wheel] [ippo | cppo] [cpu | cuda:$GPU_ID]
+python main.py
+```
+
+- The first optional argument is name of the scenario (default: balance).
+- The second optional argument is the PPO-based algorithm (default: ippo).
+- The third optional argument is the device (default: cuda if it is available else cpu).
+
 ## Requirements
 
 ```requirements

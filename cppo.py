@@ -136,8 +136,6 @@ class CPPO:
             self.device,
             centralised=True
         )
-        reward_list = []
-        evaluate_reward_list = []
         evaluate_env = deepcopy(env)
         update_counter = 1
         save_weight = save_frequency > 0
@@ -166,19 +164,7 @@ class CPPO:
                 episode_reward += rewards.mean().item()
                 if (((step + 1) % policy_update == 0 or step == sample_num - 1)
                     and training):
-                    loss_list, actor_loss_list, critic_loss_list = self.update(memory, update_batch)
-                    reward_list.append(episode_reward)
-                    if write_file:
-                        pass
-                    else:
-                        loss_mean = torch.tensor(loss_list).mean()
-                        actor_mean = torch.tensor(actor_loss_list).mean()
-                        critic_mean = torch.tensor(critic_loss_list).mean()
-                        print(
-                            'Loss: ', f'{loss_mean.item():10.5f}',
-                            'Actor loss: ', f'{actor_mean.item():10.5f}',
-                            'Critic loss: ', f'{critic_mean.item():10.5f}'
-                        )
+                    self.update(memory, update_batch)
             # Copies parameters from actor network to target policy network.
             self.target.load_state_dict(self.actor.state_dict())
             # Writes reward values to file or just prints values.
@@ -195,7 +181,6 @@ class CPPO:
                     render=False,
                     centralised=True
                 )
-                evaluate_reward_list.append(evaluate_reward)
                 if write_file:
                     write_str = (f'{episode // evaluate_frequency:4d}'
                                  + f' {episode:6d}'
@@ -213,4 +198,3 @@ class CPPO:
                 critic_weight_name = f'{save_prefix}/critic{episode}.pt'
                 torch.save(self.actor.state_dict(), actor_weight_name)
                 torch.save(self.critic.state_dict(), critic_weight_name)
-        return reward_list, evaluate_reward_list

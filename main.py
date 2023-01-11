@@ -28,7 +28,7 @@ POLICY_UPDATE = 64
 UPDATE_BATCH = 32
 EVALUATE_FREQUENCY = 10
 SAVE_FREQUENCY = -1
-WRITE_FILE = False
+WRITE_FILE = True
 
 ALGORITHM = 'ippo'
 
@@ -44,7 +44,6 @@ if __name__ == '__main__':
             ALGORITHM = 'cppo'
     if len(sys.argv) > 3:
         DEVICE = sys.argv[3]
-    
     
     env = vmas.make_env(
         scenario_name=SCENARIO,
@@ -102,6 +101,6 @@ if __name__ == '__main__':
     elif SCENARIO == 'balance':
         heuristic = BalanceHeuristic(continuous_action=True)
     else:
-        heuristic = TransportHeuristic()
+        heuristic = TransportHeuristic(True)
     heuristic_reward = run_env(env, heuristic, render=False)
     print('Heuristic reward: ', heuristic_reward)
