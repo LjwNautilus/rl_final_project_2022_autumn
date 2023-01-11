@@ -30,3 +30,19 @@ For detailed usage please read the help information of `python main.py --help`.
 vmas
 torch
 ```
+
+## Results
+
+Training results of IPPO, CPPO and MAPPO are shown below. It is obvious that rewards did not converge and the algorithm hardly learn anything.
+
+### balance
+
+![lZwTo.png](https://i.328888.xyz/2023/01/11/lZwTo.png)
+
+### transport
+
+![lZT1A.png](https://i.328888.xyz/2023/01/11/lZT1A.png)
+
+### wheel
+
+![li8gH.png](https://i.328888.xyz/2023/01/11/li8gH.png)
