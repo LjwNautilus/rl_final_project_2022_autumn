@@ -4,24 +4,25 @@ This repository is the codebase of *Reinforcement Learning and Game Theory*  cou
 
 ## File Structure
 
-- Directory `/comments/` stores comments of key source code. Three scenario files are commented: `balance.py`, `transport.py`, `wheel.py`.
-- Directory `/utils/` stores utilitiy code shared by algorithms.
+- Directory `./comments/` stores comments of key source code. Three scenario files are commented: `balance.py`, `transport.py`, `wheel.py`.
+- Directory `./utils/` stores utilitiy code shared by algorithms.
   - `network.py` defines network architectures.
   - `replay_memory.py` implements experience replay.
   - `run_env.py` defines a function `run_env` to test policies.
-- `cppo.py`, `ippo.py` defines PPO-based algorithms.
+- Directory `./algorithms` stores code of PPO-bases algorithms. `cppo.py`, `ippo.py` and `mappo.py` are in the directory.
 - The main function lies in `main.py`.
 
 ## Usage
 
 ```bash
-# python main.py --help
-python main.py
+python main.py \
+  --alg cppo \  # [cppo | ippo | mappo]  default: cppo
+  --scenario balance \  # [balance | wheel | transport]
+  --device cpu \  # [cuda | cuda:$DEVICE_ID | cpu]
+  --epoch 400  # default: 400
 ```
 
-- The first optional argument is name of the scenario (default: balance).
-- The second optional argument is the PPO-based algorithm (default: ippo).
-- The third optional argument is the device (default: cuda if it is available else cpu).
+For detailed usage please read the help information of `python main.py --help`.
 
 ## Requirements
 

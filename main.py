@@ -30,7 +30,7 @@ POLICY_UPDATE = 64
 UPDATE_BATCH = 32
 EVALUATE_FREQUENCY = 10
 SAVE_FREQUENCY = -1
-WRITE_FILE = False
+WRITE_FILE = True
 
 ALGORITHM = 'cppo'
 
@@ -75,9 +75,9 @@ def parse_args():
     )
     parser.add_argument(
         '-r', '--render',
-        dest='render',
-        help=f'whether render gif, GL is needed. default is {RENDER}',
-        default=RENDER, type=bool
+        dest='render', action='store_true',
+        help=f'whether render gif, GL is needed. default is Fasle',
+        default=False, type=bool
     )
     parser.add_argument(
         '-e', '--epoch',
