@@ -35,6 +35,8 @@ torch
 
 Training results of IPPO, CPPO and MAPPO are shown below. It is obvious that rewards did not converge and the algorithm hardly learn anything.
 
+If images cannot be loaded, please check your accessment to https://raw.githubusercontent.com or just clone this repository and view images locally.
+
 ### balance
 
 ![balance.png](./utils/pics/balance.png)
